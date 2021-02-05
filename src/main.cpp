@@ -1,11 +1,10 @@
 #include <Arduino.h>
 #include <IRremote.h> //* Disable (set to 0) all the protocols you do not need/want!
-const int pinIR = 4;
+const int pinIR = 11;
 IRrecv irrecv(pinIR);
-decode_results results;
 
-const int NecCodeRed = 114;
-const int NecCodeBlue = 97;
+const int NecCodeRed = 114; // crveni taster na daljinskom
+const int NecCodeBlue = 97; // plavi taster na daljinskom
 
 const int itvMain = 100;
 const int pinPir = 12;
@@ -14,22 +13,24 @@ const int pinBuzz = 10;
 
 bool deviceOn = false; // da li je aparat ukljucen ili ne
 
+void setLedOn() { digitalWrite(pinLed, deviceOn); }
+
 void translateIR()
 {
-  Serial.println(irrecv.decodedIRData.command);
-  Serial.println(irrecv.decodedIRData.address);
+  // Serial.println(irrecv.decodedIRData.command);
+  // Serial.println(irrecv.decodedIRData.address);
   if (irrecv.decodedIRData.command == NecCodeRed)
     deviceOn = !deviceOn;
-  digitalWrite(pinLed, deviceOn);
+  setLedOn();
 }
 
 void setup()
 {
-  Serial.begin(9600);
-  Serial.println();
+  // Serial.begin(9600);
+  // Serial.println();
 
   pinMode(pinLed, OUTPUT);
-  digitalWrite(pinLed, false);
+  setLedOn();
 
   irrecv.enableIRIn();
 }
@@ -42,6 +43,5 @@ void loop()
     delay(itvMain);
     irrecv.resume();
   }
-
-  digitalWrite(pinBuzz, digitalRead(pinPir));
+  digitalWrite(pinBuzz, deviceOn && digitalRead(pinPir));
 }
