@@ -1,0 +1,11 @@
+Mogle bi se dodati neke opcije na taster:
+ - dvoklik: nema buzzera na 10min
+ - dugi klik: nema buzzera na 1h
+ - odgovor LEDom na ove komande da bi korisnik znao da je prihvacena komanda:
+    brzi dupli blink (10min) / spori blink (1h)
+
+Buzzer/led su ukljuceni programski definisano vreme (1/2/3sec ili blink 2/3 puta), a ne onoliko
+koliko PIR daje HIGH signal.
+
+Pistanje nije ukljuceno, PIR se dize na HIGH, pistanje se ukljucuje -> aparat pisti. Zabraniti pistanje
+zbog HIGH PIRa u trenutku ukljucivanja pistanja.

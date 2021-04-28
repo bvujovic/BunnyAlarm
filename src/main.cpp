@@ -1,34 +1,44 @@
 #include <Arduino.h>
 #include <IRremote.h> //* Disable (set to 0) all the protocols you do not need/want!
-const int pinIR = 11;
+const byte pinIR = 10;
 IRrecv irrecv(pinIR);
 
-const int NecCodeRed = 114; // crveni taster na daljinskom
-const int NecCodeBlue = 97; // plavi taster na daljinskom
+#include <ClickButton.h>
+const byte pinBtn = A0;
+ClickButton btn(pinBtn, LOW, CLICKBTN_PULLUP); // taster za promenu stanja/ukljucenosti aparata (deviceOn)
 
-const int itvMain = 100;
-const int pinPir = 12;
-const int pinLed = LED_BUILTIN;
-const int pinBuzz = 10;
+const int NecCodeRed = 114; // crveni taster na daljinskom
+const int itvMain = 10;
+const byte pinPir = 11;
+const byte pinLed = LED_BUILTIN;
+const byte pinBuzz = 12;
 
 bool deviceOn = false; // da li je aparat ukljucen ili ne
 
+// ugradjeni LED svetli ako je deviceOn, u suprotnom ne svetli
 void setLedOn() { digitalWrite(pinLed, deviceOn); }
+
+// promena deviceOn vrednosti tj. stanja aparata
+void toggleDeviceOn()
+{
+  deviceOn = !deviceOn;
+  setLedOn();
+}
 
 void translateIR()
 {
-  // Serial.println(irrecv.decodedIRData.command);
-  // Serial.println(irrecv.decodedIRData.address);
+  //T Serial.println(irrecv.decodedIRData.command);
+  //T Serial.println(irrecv.decodedIRData.address);
   if (irrecv.decodedIRData.command == NecCodeRed)
-    deviceOn = !deviceOn;
-  setLedOn();
+    toggleDeviceOn();
 }
 
 void setup()
 {
-  // Serial.begin(9600);
-  // Serial.println();
+  //T Serial.begin(9600);
+  //T Serial.println();
 
+  pinMode(pinBuzz, OUTPUT);
   pinMode(pinLed, OUTPUT);
   setLedOn();
 
@@ -37,6 +47,9 @@ void setup()
 
 void loop()
 {
+  btn.Update();
+  if (btn.clicks == 1)
+    toggleDeviceOn();
   if (irrecv.decode())
   {
     translateIR();
@@ -44,4 +57,6 @@ void loop()
     irrecv.resume();
   }
   digitalWrite(pinBuzz, deviceOn && digitalRead(pinPir));
+  
+  delay(20);
 }
