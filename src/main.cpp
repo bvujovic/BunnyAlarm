@@ -7,21 +7,37 @@ IRrecv irrecv(pinIR);
 const byte pinBtn = A0;
 ClickButton btn(pinBtn, LOW, CLICKBTN_PULLUP); // taster za promenu stanja/ukljucenosti aparata (deviceOn)
 
-const int NecCodeRed = 114; // crveni taster na daljinskom
-const int itvMain = 10;
 const byte pinPir = 11;
-const byte pinLed = LED_BUILTIN;
 const byte pinBuzz = 12;
+#include "Blinky.h"
+Blinky led = Blinky::create(); // LED_BUILTIN statusna dioda: upaljena -> buzzer se pali na PIR HIGH
+Blinky buzz(pinBuzz, true);    // buzzer
 
-bool deviceOn = false; // da li je aparat ukljucen ili ne
+const int NecCodeRed = 114; // crveni taster na daljinskom
 
-// ugradjeni LED svetli ako je deviceOn, u suprotnom ne svetli
-void setLedOn() { digitalWrite(pinLed, deviceOn); }
+ulong msPirEnd = 0;       // Vreme poslednjeg registrovanog HIGH signala na PIR-u
+bool deviceOn = false;    // Da li aparat reaguje na PIR HIGH paljenjem
+ulong deviceOffUntil = 0; // Aparat nece reagovati na PIR HIGH do ovog vremena
 
-// promena deviceOn vrednosti tj. stanja aparata
+// Da li aparat reaguje na PIR HIGH imajuci u vidu promenljive deviceOn i deviceOffUntil
+bool isDeviceOn() { return deviceOn && deviceOffUntil == 0; }
+
+// Ugradjeni LED svetli ako aparat reaguje na PIR HIGH, u suprotnom ne svetli
+void setLedOn() { led.ledOn(isDeviceOn()); }
+
+// Suspendovanje aparata na dati broj minuta
+void deviceOffTemp(ulong minutes)
+{
+  deviceOffUntil = millis() + minutes * 60 * 1000;
+  deviceOn = false;
+  setLedOn();
+}
+
+// Promena deviceOn vrednosti tj. stanja aparata
 void toggleDeviceOn()
 {
   deviceOn = !deviceOn;
+  deviceOffUntil = 0;
   setLedOn();
 }
 
@@ -35,11 +51,11 @@ void translateIR()
 
 void setup()
 {
-  //T Serial.begin(9600);
-  //T Serial.println();
+  Serial.begin(9600);
+  Serial.println();
 
-  pinMode(pinBuzz, OUTPUT);
-  pinMode(pinLed, OUTPUT);
+  pinMode(buzz.getPin(), OUTPUT);
+  pinMode(led.getPin(), OUTPUT);
   setLedOn();
 
   irrecv.enableIRIn();
@@ -47,16 +63,42 @@ void setup()
 
 void loop()
 {
-  btn.Update();
-  if (btn.clicks == 1)
-    toggleDeviceOn();
+  // tumacenje IR signala, ako ga ima
   if (irrecv.decode())
   {
     translateIR();
-    delay(itvMain);
+    delay(100);
     irrecv.resume();
   }
-  digitalWrite(pinBuzz, deviceOn && digitalRead(pinPir));
-  
-  delay(20);
+  // tumacenje klikova na taster
+  btn.Update();
+  if (btn.clicks == 1)
+    toggleDeviceOn();
+  if (btn.clicks == 2) // dvoklik: nema buzzera na 10min
+  {
+    led.ledOn("01.11.10", 250);
+    deviceOffTemp(10);
+  }
+  if (btn.clicks == 3) // troklik: nema buzzera na 1h
+  {
+    led.ledOn("01.11.10", 750);
+    deviceOffTemp(60);
+  }
+  if (btn.clicks == -1) // dugi klik: test zvuka
+  {
+    buzz.ledOn("11.10"); //todo ovo se ponavlja 2x bezveze
+  }
+
+  // on/off buzzer-a u zavisnosti od PIR-a, deviceOn, deviceOffUntil promenljivih
+  ulong ms = millis();
+  if (digitalRead(pinPir))
+    msPirEnd = ms;
+  if (ms < msPirEnd + 1000 && isDeviceOn())
+    buzz.blinkAsync(ms);
+  else
+    buzz.off();
+  if (deviceOffUntil != 0 && ms > deviceOffUntil)
+    toggleDeviceOn();
+
+  delay(10);
 }
